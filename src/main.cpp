@@ -12,41 +12,31 @@
 
 PID lineFollower(1.0, 0.0, 0.0);
 
-void direcao(int sentidoEsq, int sentidoDir);
-void motor(int velEsq, int velDir);
+void motor(int velEsq, int velDir) {
+  velEsq = constrain(velEsq, -255, 255);
+  velDir = constrain(velDir, -255, 255);
 
-void direcao(int sentidoEsq, int sentidoDir){
-  digitalWrite(IN1, 0+sentidoEsq);
-  digitalWrite(IN2, 1-sentidoEsq);
-  digitalWrite(IN3, 0+sentidoDir);
-  digitalWrite(IN4, 1-sentidoDir);
-}
+  int esq = velEsq >= 0 ? 1 : 0;
+  int dir = velDir >= 0 ? 1 : 0;
 
-void motor(int velEsq, int velDir){
-  velEsq = constrain(velDir, -255, 255);
-  velDir = constrain(velEsq, -255, 255);
+  digitalWrite(IN1, !esq);
+  digitalWrite(IN2, esq);
+  digitalWrite(IN3, !dir);
+  digitalWrite(IN4, dir);
 
-  if (velEsq < 0){
-    velEsq *= -1;
+  if (velEsq == 0) {
     digitalWrite(IN1, LOW);
-    digitalWrite(IN2, HIGH);
-  }
-  else{
-    digitalWrite(IN1, HIGH);
     digitalWrite(IN2, LOW);
   }
-  if (velDir < 0){
-    velDir *= -1;
+  if (velDir == 0) {
     digitalWrite(IN3, LOW);
-    digitalWrite(IN4, HIGH);
-  }
-  else{
-    digitalWrite(IN3, HIGH);
     digitalWrite(IN4, LOW);
   }
-  analogWrite(ENA, velEsq);
-  analogWrite(ENB, velDir);
+
+  analogWrite(ENA, abs(velEsq));
+  analogWrite(ENB, abs(velDir));
 }
+
 
 void setup() {
   // Configuração dos pinos como saída
@@ -56,19 +46,13 @@ void setup() {
   pinMode(IN2, OUTPUT);
   pinMode(IN3, OUTPUT);
   pinMode(IN4, OUTPUT);
-
-  digitalWrite(IN1, LOW);
-  digitalWrite(IN2, HIGH);
-
-  digitalWrite(IN3, LOW);
-  digitalWrite(IN4, HIGH);
 }
 
 void loop() {
-  motor(100, 100);
+  motor(70, 200);
   delay(1000);
   motor(0, 0);
+  delay(500);
+  motor(-70, -200);
   delay(1000);
-  motor(-100, -100);
-  delay(10000);
 }
