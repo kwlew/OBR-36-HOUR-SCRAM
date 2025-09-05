@@ -9,44 +9,47 @@
 #define IN2 A10
 #define IN3 A9
 #define IN4 A8
-
+int velEsq = 0, velDir = 0;
 PID lineFollower(1.0, 0.0, 0.0);
 
-void direcao(int sentidoEsq, int sentidoDir);
 void motor(int velEsq, int velDir);
 
-void direcao(int sentidoEsq, int sentidoDir){
-  digitalWrite(IN1, 0+sentidoEsq);
-  digitalWrite(IN2, 1-sentidoEsq);
-  digitalWrite(IN3, 0+sentidoDir);
-  digitalWrite(IN4, 1-sentidoDir);
-}
+void motor(int velEsq, int velDir) {
+  velEsq = constrain(velEsq, -255, 255);
+  velDir = constrain(velDir, -255, 255);
 
-void motor(int velEsq, int velDir){
-  velEsq = constrain(velDir, -255, 255);
-  velDir = constrain(velEsq, -255, 255);
-
-  if (velEsq < 0){
-    velEsq *= -1;
+  // Motor Esquerdo
+  if (velEsq > 0) {
     digitalWrite(IN1, LOW);
     digitalWrite(IN2, HIGH);
-  }
-  else{
+  } else if (velEsq < 0) {
     digitalWrite(IN1, HIGH);
     digitalWrite(IN2, LOW);
+    velEsq = -velEsq;
+  } else {
+    // Freio ativo
+    digitalWrite(IN1, HIGH);
+    digitalWrite(IN2, HIGH);
   }
-  if (velDir < 0){
-    velDir *= -1;
+
+  // Motor Direito
+  if (velDir > 0) {
     digitalWrite(IN3, LOW);
     digitalWrite(IN4, HIGH);
-  }
-  else{
+  } else if (velDir < 0) {
     digitalWrite(IN3, HIGH);
     digitalWrite(IN4, LOW);
+    velDir = -velDir;
+  } else {
+    // Freio ativo
+    digitalWrite(IN3, HIGH);
+    digitalWrite(IN4, HIGH);
   }
+
   analogWrite(ENA, velEsq);
   analogWrite(ENB, velDir);
 }
+
 
 void setup() {
   // Configuração dos pinos como saída
