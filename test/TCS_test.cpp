@@ -12,6 +12,10 @@ void tcaSelect(uint8_t channel) {
   delay(10); // Pequena pausa para garantir comutação
 }
 
+void initTCS(){
+    
+}
+
 void setup() {
   Wire.begin();
   Serial.begin(9600);
