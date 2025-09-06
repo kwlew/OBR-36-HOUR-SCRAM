@@ -2,6 +2,7 @@
 #include <PIDEasy.h>
 #include <QTRSensors.h>
 #include <Adafruit_TCS34725.h>
+#include <Wire.h>
 
 // Definições dos pinos
 #define ENA 5   // Enable Motor A
@@ -10,19 +11,64 @@
 #define IN2 A10
 #define IN3 A9
 #define IN4 A8
+#define TCA9548A_ADDR 0x70
+#define Trja 30
+#define Echo 32
 
 QTRSensors qtr;
-PID lineFollower(0.28, 0.0, 0.7);
+PID lineFollower(0.3, 0.0, 2.5);
 
 const uint16_t pinos[8] = {A0, A1, A2, A3, A4, A5, A6, A7};
 const uint8_t sensorCount = 8;
 uint16_t sensorValues[sensorCount];
 uint16_t limite = 860;
 
+void tcaSelect(uint8_t channel) {
+  if (channel > 7) return;
+  Wire.beginTransmission(TCA9548A_ADDR);
+  Wire.write(1 << channel); // Ativa apenas o canal desejado
+  Wire.endTransmission();
+  delay(10); // Pequena pausa para garantir comutação
+}
+
 void initQTR(){
   qtr.setTypeAnalog();
   qtr.setSensorPins((const uint8_t[]){A0, A1, A2, A3, A4, A5, A6, A7}, sensorCount);
   delay(500);
+}
+
+void I2C_Scanner(){
+  Serial.println(F("🔍 Scanner I2C com TCA9548A"));
+
+  for (uint8_t channel = 0; channel < 8; channel++) {
+    tcaSelect(channel);
+    Serial.print(F("\n🔀 Canal ")); Serial.print(channel); Serial.println(F(":"));
+
+    uint8_t devicesFound = 0;
+
+    for (uint8_t addr = 1; addr < 127; addr++) {
+      Wire.beginTransmission(addr);
+      uint8_t error = Wire.endTransmission();
+
+      if (error == 0) {
+        Serial.print(F("  ✅ Dispositivo I2C encontrado no endereço 0x"));
+        if (addr < 16) Serial.print("0");
+        Serial.print(addr, HEX);
+        Serial.println();
+        devicesFound++;
+      } else if (error == 4) {
+        Serial.print(F("  ⚠️ Erro desconhecido no endereço 0x"));
+        if (addr < 16) Serial.print("0");
+        Serial.println(addr, HEX);
+      }
+    }
+
+    if (devicesFound == 0) {
+      Serial.println(F("  ❌ Nenhum dispositivo encontrado nesse canal."));
+    }
+  }
+
+  Serial.println(F("\n✅ Varredura completa."));
 }
 
 void calibrateQTR(){
@@ -76,7 +122,25 @@ long readCase() {
   return output;
 }
 
+float dist(){
+  long duration;
+  float distance;
+
+  digitalWrite(Trja, 0);
+  delayMicroseconds(2);
+  digitalWrite(Trja, 1);
+  delayMicroseconds(10);
+  digitalWrite(Trja, 0);
+
+  duration = pulseIn(Echo, 1);
+  distance = duration * 0.034 / 2;
+
+  Serial.println("Distance" + String(distance) + String(" cm"));
+  delay(500);
+}
+
 void forward(){
+  dist();
   uint16_t pos = qtr.readLineBlack(sensorValues);
   int error = pos - 3500;
   Serial.println("error: " + String(error));
@@ -93,8 +157,12 @@ void gap(){
 }
 
 void setup() {
-  Serial.begin(9600);  
+  Wire.begin();
+  Serial.begin(9600);
+  I2C_Scanner();  
   // Configuração dos pinos como saída
+  pinMode(Trja, OUTPUT);
+  pinMode(Echo, INPUT);
   pinMode(ENA, OUTPUT);
   pinMode(ENB, OUTPUT);
   pinMode(IN1, OUTPUT);
@@ -103,14 +171,16 @@ void setup() {
   pinMode(IN4, OUTPUT);
   initQTR();
   calibrateQTR();
-  lineFollower.setConstrain(-80, 80);
+  lineFollower.setConstrain(-40, 40);
 }
 
 void loop() {
   if (readCase() == 0){
-    gap();
+     Serial.println("Gap found!");
+     gap();
+   }
+   else{
+     Serial.println("Forwarding!");
+     forward();
+   }
   }
-  else{
-    forward();
-  }
-}
