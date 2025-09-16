@@ -17,7 +17,7 @@
 #define Echo 32
 
 QTRSensors qtr;
-PID lineFollower(0.3, 0.0, 2.5);
+PID lineFollower(0.5, 0.0, 2);
 
 float hue = 0.0;
 float hsv[3];
@@ -176,7 +176,7 @@ void I2C_Scanner(){
   Serial.println(F("\n✅ Varredura completa."));
 }
 
-void calibrateQTR(){
+void calibrateQTR(){ // cada 40ms.
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
   for (uint16_t i = 0; i<200; i++){
@@ -211,6 +211,24 @@ void motor(int velEsq, int velDir) {
   analogWrite(ENB, abs(velDir));
 }
 
+void activeBreaks(){
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, HIGH);
+}
+
+void turn(char side){
+  if (side == 'L'){
+    motor(-100, 100);
+    activeBreaks();
+  }
+  else{
+    motor(100, -100);
+    activeBreaks();
+  }
+}
+
 long readCase() {
   long output = 0;
   long multiplier = 1;
@@ -241,7 +259,6 @@ float dist(){
   distance = duration * 0.034 / 2;
 
   Serial.println("Distance" + String(distance) + String(" cm"));
-  delay(500);
   return distance;
 }
 
@@ -252,13 +269,36 @@ void forward(){
   Serial.println("error: " + String(error));
   int output = lineFollower.compute(error, 1);
   Serial.println("output: " + String(output));
-  motor(40 + output, 40 - output);
+  motor(75 + output, 75 - output);
   Serial.println(qtr.readLineBlack(sensorValues));
 }
 
 void gap(){
   while (readCase() == 0){
-    motor (60, 60);
+    motor (65, 65);
+  }
+}
+
+void checkCase(){
+  qtr.readLineBlack(sensorValues);
+  int16_t qtrs = readCase();
+  if (qtrs == 0){
+    gap();
+  }
+  else if(qtrs == 11110000 or qtrs == 11100000 or qtrs == 11111000){
+    delay(20);
+    while(readCase() == 0){
+      motor(30, 90);
+    }
+  }
+  else if(qtrs == 0000111 or qtrs == 00011111 or qtrs == 00001111){
+    delay(20);
+    while(readCase() == 0){
+      motor(90, 30);
+    }
+  }
+  else{
+    forward();
   }
 }
 
@@ -275,20 +315,16 @@ void setup() {
   pinMode(IN2, OUTPUT);
   pinMode(IN3, OUTPUT);
   pinMode(IN4, OUTPUT);
-  //initQTR();
-  //calibrateQTR();
-  //lineFollower.setConstrain(-40, 40);
+  // initQTR();
+  // calibrateQTR();
+  // lineFollower.setConstrain(-80, 80);
 }
-
+// verde de 80 até fds. 
 void loop() {
-  // if (readCase() == 0){
-  //    Serial.println("Gap found!");
-  //    gap();
-  //  }
-   //else{
-   //  Serial.println("Forwarding!");
-   //  forward();
-   //}
-  readTCSDireita();
-  readTCSEsquerda();
-  }
+  // checkCase();
+  // dist();
+  // for (int i=0; i<8; i++){
+  //   Serial.println(sensorValues[i]);
+  // }
+  motor(255, 255);
+}
